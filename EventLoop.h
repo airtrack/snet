@@ -1,6 +1,8 @@
 #ifndef EVENT_LOOP_H
 #define EVENT_LOOP_H
 
+#include <memory>
+
 namespace snet
 {
 
@@ -34,6 +36,8 @@ public:
     virtual void UpdateEvents(EventHandler *eh) = 0;
     virtual void Loop() = 0;
 };
+
+std::unique_ptr<EventLoop> CreateEventLoop();
 
 } // namespace snet
 

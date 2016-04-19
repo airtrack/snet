@@ -13,5 +13,6 @@ add_library(snet
     Acceptor.cpp
     Connector.cpp
     Connection.cpp
+    EventLoop.cpp
     KQueue.cpp
     )
