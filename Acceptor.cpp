@@ -7,6 +7,7 @@ namespace snet
 Acceptor::Acceptor(const std::string &ip, unsigned short port,
                    EventLoop *loop)
     : fd_(-1),
+      listen_ok_(false),
       loop_(loop),
       eh_(this)
 {
@@ -20,6 +21,11 @@ Acceptor::~Acceptor()
 
     if (fd_ >= 0)
         close(fd_);
+}
+
+bool Acceptor::IsListenOk() const
+{
+    return listen_ok_;
 }
 
 void Acceptor::SetOnNewConnection(const OnNewConnection &onc)
@@ -45,6 +51,7 @@ bool Acceptor::CreateListenSocket(const std::string &ip, unsigned short port)
     if (listen(fd_, 5) < 0)
         return false;
 
+    listen_ok_ = true;
     return true;
 }
 

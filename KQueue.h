@@ -16,9 +16,11 @@ public:
     virtual void DelEventHandler(EventHandler *eh) override;
     virtual void UpdateEvents(EventHandler *eh) override;
     virtual void Loop() override;
+    virtual void Stop() override;
 
 private:
     int kqueue_fd_;
+    bool stop_;
 };
 
 } // namespace snet

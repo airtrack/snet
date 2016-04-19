@@ -35,6 +35,7 @@ public:
     virtual void DelEventHandler(EventHandler *eh) = 0;
     virtual void UpdateEvents(EventHandler *eh) = 0;
     virtual void Loop() = 0;
+    virtual void Stop() = 0;
 };
 
 std::unique_ptr<EventLoop> CreateEventLoop();

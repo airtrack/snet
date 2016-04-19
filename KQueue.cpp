@@ -8,7 +8,8 @@ namespace snet
 {
 
 KQueue::KQueue()
-    : kqueue_fd_(kqueue())
+    : kqueue_fd_(kqueue()),
+      stop_(false)
 {
 }
 
@@ -81,7 +82,7 @@ void KQueue::UpdateEvents(EventHandler *eh)
 
 void KQueue::Loop()
 {
-    for (;;)
+    while (!stop_)
     {
         struct kevent kev[10];
         struct timespec ts;
@@ -106,6 +107,11 @@ void KQueue::Loop()
             }
         }
     }
+}
+
+void KQueue::Stop()
+{
+    stop_ = true;
 }
 
 } // namespace snet

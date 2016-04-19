@@ -16,3 +16,5 @@ add_library(snet
     EventLoop.cpp
     KQueue.cpp
     )
+
+add_subdirectory(test)

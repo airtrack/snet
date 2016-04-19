@@ -23,6 +23,7 @@ public:
     Acceptor(const Acceptor &) = delete;
     void operator = (const Acceptor &) = delete;
 
+    bool IsListenOk() const;
     void SetOnNewConnection(const OnNewConnection &onc);
 
 private:
@@ -67,6 +68,7 @@ private:
     void HandleAccept();
 
     int fd_;
+    bool listen_ok_;
     EventLoop *loop_;
     OnNewConnection onc_;
     AcceptorEventHandler eh_;
