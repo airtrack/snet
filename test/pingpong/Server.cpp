@@ -55,7 +55,7 @@ private:
 
     void ConnectionRecv(const ConnectionPtr &c)
     {
-        char buf[512];
+        char buf[16 * 1024];
         snet::Buffer buffer(buf, sizeof(buf));
         auto ret = c->Recv(&buffer);
 

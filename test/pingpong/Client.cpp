@@ -11,8 +11,8 @@ class Client final
 public:
     explicit Client(snet::EventLoop *loop)
         : loop_(loop),
-          send_buf_(100),
-          recv_buf_(100),
+          send_buf_(kDataSize),
+          recv_buf_(kDataSize),
           recv_(&recv_buf_[0], recv_buf_.size())
     {
     }
@@ -80,6 +80,8 @@ private:
             Send();
         }
     }
+
+    static const std::size_t kDataSize = 16 * 1024;
 
     snet::EventLoop *loop_;
     std::vector<char> send_buf_;
