@@ -23,6 +23,12 @@ inline bool SetSocketNonBlock(int fd)
     return true;
 }
 
+inline void SetSocketReuseAddr(int fd)
+{
+    int reuse = 1;
+    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
+}
+
 inline void SetSockAddrIn(struct sockaddr_in *sin,
                           const char *ip, unsigned short port)
 {

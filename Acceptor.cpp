@@ -42,6 +42,8 @@ bool Acceptor::CreateListenSocket(const std::string &ip, unsigned short port)
     if (!SetSocketNonBlock(fd_))
         return false;
 
+    SetSocketReuseAddr(fd_);
+
     struct sockaddr_in sin;
     SetSockAddrIn(&sin, ip.c_str(), port);
 
