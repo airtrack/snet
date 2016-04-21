@@ -5,8 +5,9 @@ namespace snet
 {
 
 Acceptor::Acceptor(const std::string &ip, unsigned short port,
-                   EventLoop *loop)
+                   EventLoop *loop, int backlog)
     : fd_(-1),
+      backlog_(backlog),
       listen_ok_(false),
       loop_(loop),
       eh_(this)
@@ -50,7 +51,7 @@ bool Acceptor::CreateListenSocket(const std::string &ip, unsigned short port)
     if (bind(fd_, reinterpret_cast<struct sockaddr *>(&sin), sizeof(sin)) < 0)
         return false;
 
-    if (listen(fd_, 5) < 0)
+    if (listen(fd_, backlog_) < 0)
         return false;
 
     listen_ok_ = true;

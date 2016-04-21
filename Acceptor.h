@@ -17,7 +17,7 @@ public:
     using OnNewConnection = std::function<void (ConnectionPtr)>;
 
     Acceptor(const std::string &ip, unsigned short port,
-             EventLoop *loop);
+             EventLoop *loop, int backlog = kDefaultBacklog);
     ~Acceptor();
 
     Acceptor(const Acceptor &) = delete;
@@ -67,7 +67,10 @@ private:
     bool CreateListenSocket(const std::string &ip, unsigned short port);
     void HandleAccept();
 
+    static const int kDefaultBacklog = 5;
+
     int fd_;
+    int backlog_;
     bool listen_ok_;
     EventLoop *loop_;
     OnNewConnection onc_;
