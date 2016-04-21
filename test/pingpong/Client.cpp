@@ -10,11 +10,13 @@ class Client final
 {
 public:
     explicit Client(snet::EventLoop *loop)
-        : loop_(loop),
-          send_buf_(kDataSize),
-          recv_buf_(kDataSize),
-          recv_(&recv_buf_[0], recv_buf_.size())
+        : loop_(loop)
     {
+    }
+
+    static void SetClientNumber(int num)
+    {
+        client_number = num;
     }
 
     void Connect(const char *ip, unsigned short port)
@@ -31,79 +33,110 @@ private:
     void Run()
     {
         if (!connection_)
-            return loop_->Stop();
+            return Stop();
 
         connection_->SetOnError(
             [this] (){
                 connection_->Close();
-                loop_->Stop();
+                Stop();
             });
         connection_->SetOnReceivable(
             [this] () {
                 Recv();
             });
 
-        Send();
+        char *buf = new char[kDataSize];
+        std::unique_ptr<snet::Buffer> buffer(
+            new snet::Buffer(buf, kDataSize, SendBufferDeleter));
+        Send(std::move(buffer));
     }
 
-    void Send()
+    void Send(std::unique_ptr<snet::Buffer> buffer)
     {
-        std::unique_ptr<snet::Buffer> buffer(
-            new snet::Buffer(&send_buf_[0], send_buf_.size()));
-
         if (connection_->Send(std::move(buffer)) ==
             static_cast<int>(snet::Send::Error))
         {
             connection_->Close();
-            loop_->Stop();
+            Stop();
         }
     }
 
     void Recv()
     {
-        auto ret = connection_->Recv(&recv_);
+        char buf[kDataSize];
+        snet::Buffer buffer(buf, sizeof(buf));
+        auto ret = connection_->Recv(&buffer);
+
         if (ret == static_cast<int>(snet::Recv::PeerClosed) ||
             ret == static_cast<int>(snet::Recv::Error))
         {
             connection_->Close();
-            return loop_->Stop();
+            return Stop();
         }
 
         if (ret == static_cast<int>(snet::Recv::NoAvailData))
             return ;
 
-        recv_.pos += ret;
-        if (recv_.pos == recv_.size)
+        buffer.pos = ret;
+        if (buffer.pos > 0)
         {
-            recv_.pos = 0;
-            send_buf_ = recv_buf_;
-            Send();
+            char *send_buf = new char[buffer.pos];
+            memcpy(send_buf, buffer.buf, buffer.pos);
+
+            std::unique_ptr<snet::Buffer> send_buffer(
+                new snet::Buffer(send_buf, buffer.pos, SendBufferDeleter));
+            Send(std::move(send_buffer));
         }
+    }
+
+    void Stop()
+    {
+        if (--client_number == 0)
+            loop_->Stop();
+    }
+
+    static void SendBufferDeleter(snet::Buffer *buffer)
+    {
+        delete [] buffer->buf;
     }
 
     static const std::size_t kDataSize = 16 * 1024;
 
-    snet::EventLoop *loop_;
-    std::vector<char> send_buf_;
-    std::vector<char> recv_buf_;
-    snet::Buffer recv_;
+    static int client_number;
 
+    snet::EventLoop *loop_;
     std::unique_ptr<snet::Connector> connector_;
     std::unique_ptr<snet::Connection> connection_;
 };
 
+int Client::client_number = 0;
+
 int main(int argc, const char **argv)
 {
-    if (argc != 3)
+    if (argc != 4)
     {
-        fprintf(stderr, "Usage: %s server_ip port\n", argv[0]);
+        fprintf(stderr, "Usage: %s server_ip port client_num\n", argv[0]);
         return 1;
     }
 
-    auto event_loop = snet::CreateEventLoop();
-    Client client(event_loop.get());
+    auto client_num = atoi(argv[3]);
+    if (client_num <= 0)
+    {
+        fprintf(stderr, "Invalid client number %d, use 1 as default\n",
+                client_num);
+        client_num = 1;
+    }
 
-    client.Connect(argv[1], atoi(argv[2]));
+    auto event_loop = snet::CreateEventLoop();
+    std::vector<std::unique_ptr<Client>> clients;
+
+    Client::SetClientNumber(client_num);
+    for (int i = 0; i < client_num; ++i)
+    {
+        std::unique_ptr<Client> client(new Client(event_loop.get()));
+        client->Connect(argv[1], atoi(argv[2]));
+        clients.push_back(std::move(client));
+    }
 
     event_loop->Loop();
     return 0;
