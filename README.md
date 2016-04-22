@@ -6,6 +6,6 @@ A simple network library.
 Build
 -----
 
-Only build and test on Mac OS X:
+Build and test on Mac OS X and Linux:
 
 	cmake . && make
