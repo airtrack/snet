@@ -3,6 +3,7 @@
 #include "EventLoop.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <memory>
 #include <set>
 
@@ -59,15 +60,15 @@ private:
         snet::Buffer buffer(buf, sizeof(buf));
         auto ret = c->Recv(&buffer);
 
-        if (ret == static_cast<int>(snet::Recv::PeerClosed) ||
-            ret == static_cast<int>(snet::Recv::Error))
+        if (ret == static_cast<int>(snet::RecvE::PeerClosed) ||
+            ret == static_cast<int>(snet::RecvE::Error))
         {
             c->Close();
             connection_set_.erase(c);
             return ;
         }
 
-        if (ret == static_cast<int>(snet::Recv::NoAvailData))
+        if (ret == static_cast<int>(snet::RecvE::NoAvailData))
             return ;
 
         buffer.pos = ret;
@@ -80,7 +81,7 @@ private:
                 new snet::Buffer(send_buf, buffer.pos, SendBufferDeleter));
 
             if (c->Send(std::move(send_buffer)) ==
-                static_cast<int>(snet::Send::Error))
+                static_cast<int>(snet::SendE::Error))
             {
                 c->Close();
                 connection_set_.erase(c);

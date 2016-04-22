@@ -23,11 +23,11 @@ int Connection::Send(std::unique_ptr<Buffer> buffer)
     if (!send_queue_.empty())
     {
         send_queue_.push(std::move(buffer));
-        return static_cast<int>(Send::OK);
+        return static_cast<int>(SendE::OK);
     }
 
     auto ret = WriteBuffer(buffer);
-    if (ret == static_cast<int>(Send::Error))
+    if (ret == static_cast<int>(SendE::Error))
         return ret;
 
     if (buffer->pos == buffer->size)
@@ -50,14 +50,14 @@ int Connection::Recv(Buffer *buffer)
     {
         eh_.DisableRead();
         loop_->UpdateEvents(&eh_);
-        return static_cast<int>(Recv::PeerClosed);
+        return static_cast<int>(RecvE::PeerClosed);
     }
 
     if (bytes < 0 && errno != EAGAIN && errno != EINTR)
-        return static_cast<int>(Recv::Error);
+        return static_cast<int>(RecvE::Error);
 
     if (bytes < 0)
-        return static_cast<int>(Recv::NoAvailData);
+        return static_cast<int>(RecvE::NoAvailData);
     return bytes;
 }
 
@@ -88,13 +88,13 @@ int Connection::WriteBuffer(const std::unique_ptr<Buffer> &buffer)
     auto bytes = send(fd_, buf, len, 0);
 
     if (bytes < 0 && errno != EAGAIN && errno != EINTR)
-        return static_cast<int>(Send::Error);
+        return static_cast<int>(SendE::Error);
 
     if (bytes < 0)
         bytes = 0;
 
     buffer->pos += bytes;
-    return static_cast<int>(Send::OK);
+    return static_cast<int>(SendE::OK);
 }
 
 void Connection::HandleRead()
@@ -109,7 +109,7 @@ void Connection::HandleWrite()
         auto &buffer = send_queue_.front();
         auto ret = WriteBuffer(buffer);
 
-        if (ret == static_cast<int>(Send::Error))
+        if (ret == static_cast<int>(SendE::Error))
         {
             eh_.DisableWrite();
             loop_->UpdateEvents(&eh_);

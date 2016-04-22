@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 3.1)
 
 project(snet)
 
@@ -14,7 +14,14 @@ add_library(snet
     Connector.cpp
     Connection.cpp
     EventLoop.cpp
-    KQueue.cpp
     )
+
+if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    target_sources(snet
+        PRIVATE KQueue.cpp)
+elseif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+    target_sources(snet
+        PRIVATE Epoll.cpp)
+endif()
 
 add_subdirectory(test)

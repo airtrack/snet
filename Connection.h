@@ -10,13 +10,13 @@
 namespace snet
 {
 
-enum class Send : int
+enum class SendE : int
 {
     OK = 0,
     Error = -1,
 };
 
-enum class Recv : int
+enum class RecvE : int
 {
     PeerClosed = 0,
     NoAvailData = -1,

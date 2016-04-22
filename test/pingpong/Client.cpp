@@ -3,6 +3,7 @@
 #include "EventLoop.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <memory>
 #include <vector>
 
@@ -54,7 +55,7 @@ private:
     void Send(std::unique_ptr<snet::Buffer> buffer)
     {
         if (connection_->Send(std::move(buffer)) ==
-            static_cast<int>(snet::Send::Error))
+            static_cast<int>(snet::SendE::Error))
         {
             connection_->Close();
             Stop();
@@ -67,14 +68,14 @@ private:
         snet::Buffer buffer(buf, sizeof(buf));
         auto ret = connection_->Recv(&buffer);
 
-        if (ret == static_cast<int>(snet::Recv::PeerClosed) ||
-            ret == static_cast<int>(snet::Recv::Error))
+        if (ret == static_cast<int>(snet::RecvE::PeerClosed) ||
+            ret == static_cast<int>(snet::RecvE::Error))
         {
             connection_->Close();
             return Stop();
         }
 
-        if (ret == static_cast<int>(snet::Recv::NoAvailData))
+        if (ret == static_cast<int>(snet::RecvE::NoAvailData))
             return ;
 
         buffer.pos = ret;
