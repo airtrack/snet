@@ -56,6 +56,16 @@ void Epoll::SetEpollEvents(int op, EventHandler *eh)
     epoll_ctl(epoll_fd_, op, fd, &event);
 }
 
+void Epoll::AddLoopHandler(LoopHandler *lh)
+{
+    lh_set_.AddLoopHandler(lh);
+}
+
+void Epoll::DelLoopHandler(LoopHandler *lh)
+{
+    lh_set_.DelLoopHandler(lh);
+}
+
 void Epoll::Loop()
 {
     while (!stop_)
@@ -72,7 +82,11 @@ void Epoll::Loop()
             if (events[i].events & EPOLLOUT)
                 eh->HandleWrite();
         }
+
+        lh_set_.HandleLoop();
     }
+
+    lh_set_.HandleStop();
 }
 
 void Epoll::Stop()

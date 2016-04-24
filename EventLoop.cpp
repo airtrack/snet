@@ -5,6 +5,32 @@
 namespace snet
 {
 
+LoopHandlerSet::LoopHandlerSet()
+{
+}
+
+void LoopHandlerSet::AddLoopHandler(LoopHandler *lh)
+{
+    set_.insert(lh);
+}
+
+void LoopHandlerSet::DelLoopHandler(LoopHandler *lh)
+{
+    set_.erase(lh);
+}
+
+void LoopHandlerSet::HandleLoop()
+{
+    for (auto lh : set_)
+        lh->HandleLoop();
+}
+
+void LoopHandlerSet::HandleStop()
+{
+    for (auto lh : set_)
+        lh->HandleStop();
+}
+
 std::unique_ptr<EventLoop> CreateEventLoop()
 {
 #ifdef __APPLE__

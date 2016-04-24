@@ -80,6 +80,16 @@ void KQueue::UpdateEvents(EventHandler *eh)
         kevent(kqueue_fd_, kev, kevc, nullptr, 0, nullptr);
 }
 
+void KQueue::AddLoopHandler(LoopHandler *lh)
+{
+    lh_set_.AddLoopHandler(lh);
+}
+
+void KQueue::DelLoopHandler(LoopHandler *lh)
+{
+    lh_set_.DelLoopHandler(lh);
+}
+
 void KQueue::Loop()
 {
     while (!stop_)
@@ -106,7 +116,11 @@ void KQueue::Loop()
                 break;
             }
         }
+
+        lh_set_.HandleLoop();
     }
+
+    lh_set_.HandleStop();
 }
 
 void KQueue::Stop()
