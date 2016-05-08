@@ -10,7 +10,8 @@ Connection::Connection(int fd, EventLoop *loop)
       loop_(loop),
       eh_(this)
 {
-    loop_->AddEventHandler(&eh_);
+    if (loop_)
+        loop_->AddEventHandler(&eh_);
 }
 
 Connection::~Connection()
@@ -65,7 +66,8 @@ void Connection::Close()
 {
     if (fd_ >= 0)
     {
-        loop_->DelEventHandler(&eh_);
+        if (loop_)
+            loop_->DelEventHandler(&eh_);
         close(fd_);
         fd_ = -1;
     }
@@ -79,6 +81,17 @@ void Connection::SetOnError(const OnError &oe)
 void Connection::SetOnReceivable(const OnReceivable &onr)
 {
     on_recv_ = onr;
+}
+
+void Connection::ChangeEventLoop(EventLoop *loop)
+{
+    if (loop_)
+        loop_->DelEventHandler(&eh_);
+
+    loop_ = loop;
+
+    if (loop_)
+        loop_->AddEventHandler(&eh_);
 }
 
 int Connection::WriteBuffer(const std::unique_ptr<Buffer> &buffer)

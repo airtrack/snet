@@ -9,6 +9,7 @@ Acceptor::Acceptor(const std::string &ip, unsigned short port,
     : fd_(-1),
       backlog_(backlog),
       listen_ok_(false),
+      connection_with_el_(true),
       loop_(loop),
       eh_(this)
 {
@@ -32,6 +33,11 @@ bool Acceptor::IsListenOk() const
 void Acceptor::SetOnNewConnection(const OnNewConnection &onc)
 {
     onc_ = onc;
+}
+
+void Acceptor::SetNewConnectionWithEventLoop(bool flag)
+{
+    connection_with_el_ = flag;
 }
 
 bool Acceptor::CreateListenSocket(const std::string &ip, unsigned short port)
@@ -73,7 +79,8 @@ void Acceptor::HandleAccept()
         return ;
     }
 
-    onc_(ConnectionPtr(new Connection(new_fd, loop_)));
+    auto loop = connection_with_el_ ? loop_ : nullptr;
+    onc_(ConnectionPtr(new Connection(new_fd, loop)));
 }
 
 } // namespace snet

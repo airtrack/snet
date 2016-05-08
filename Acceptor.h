@@ -25,6 +25,7 @@ public:
 
     bool IsListenOk() const;
     void SetOnNewConnection(const OnNewConnection &onc);
+    void SetNewConnectionWithEventLoop(bool flag);
 
 private:
     class AcceptorEventHandler final : public EventHandler
@@ -72,6 +73,7 @@ private:
     int fd_;
     int backlog_;
     bool listen_ok_;
+    bool connection_with_el_;
     EventLoop *loop_;
     OnNewConnection onc_;
     AcceptorEventHandler eh_;

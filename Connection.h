@@ -41,6 +41,7 @@ public:
 
     void SetOnError(const OnError &oe);
     void SetOnReceivable(const OnReceivable &onr);
+    void ChangeEventLoop(EventLoop *loop);
 
 private:
     class ConnectionEventHandler final : public EventHandler
