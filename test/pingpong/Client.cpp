@@ -1,6 +1,7 @@
 #include "Connector.h"
 #include "Connection.h"
 #include "EventLoop.h"
+#include "SocketOps.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -127,6 +128,10 @@ int main(int argc, const char **argv)
                 client_num);
         client_num = 1;
     }
+
+    int max_files = 1024;
+    if (!snet::SetMaxOpenFiles(max_files))
+        fprintf(stderr, "Change max open files to %d failed\n", max_files);
 
     auto event_loop = snet::CreateEventLoop();
     std::vector<std::unique_ptr<Client>> clients;

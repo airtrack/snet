@@ -14,6 +14,7 @@ add_library(snet
     Connector.cpp
     Connection.cpp
     EventLoop.cpp
+    SocketOps.cpp
     )
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
