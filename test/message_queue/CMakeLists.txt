@@ -1,0 +1,1 @@
+add_executable(test_message_queue TestMessageQueue.cpp)
