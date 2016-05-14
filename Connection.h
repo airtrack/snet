@@ -26,6 +26,7 @@ enum class RecvE : int
 class Connection final
 {
 public:
+    using OnSendComplete = std::function<void ()>;
     using OnReceivable = std::function<void ()>;
     using OnError = std::function<void ()>;
 
@@ -41,6 +42,7 @@ public:
 
     void SetOnError(const OnError &oe);
     void SetOnReceivable(const OnReceivable &onr);
+    void SetOnSendComplete(const OnSendComplete &osc);
     void ChangeEventLoop(EventLoop *loop);
 
 private:
@@ -121,6 +123,7 @@ private:
     EventLoop *loop_;
     OnError on_error_;
     OnReceivable on_recv_;
+    OnSendComplete on_send_complete_;
     BufferQueue send_queue_;
     ConnectionEventHandler eh_;
 };

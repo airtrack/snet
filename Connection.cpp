@@ -32,7 +32,11 @@ int Connection::Send(std::unique_ptr<Buffer> buffer)
         return ret;
 
     if (buffer->pos == buffer->size)
+    {
+        if (on_send_complete_)
+            on_send_complete_();
         return ret;
+    }
 
     send_queue_.push(std::move(buffer));
 
@@ -81,6 +85,11 @@ void Connection::SetOnError(const OnError &oe)
 void Connection::SetOnReceivable(const OnReceivable &onr)
 {
     on_recv_ = onr;
+}
+
+void Connection::SetOnSendComplete(const OnSendComplete &osc)
+{
+    on_send_complete_ = osc;
 }
 
 void Connection::ChangeEventLoop(EventLoop *loop)
@@ -141,6 +150,9 @@ void Connection::HandleWrite()
     {
         eh_.DisableWrite();
         loop_->UpdateEvents(&eh_);
+
+        if (on_send_complete_)
+            on_send_complete_();
     }
 }
 
