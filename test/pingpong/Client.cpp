@@ -7,18 +7,15 @@
 #include <string.h>
 #include <memory>
 #include <vector>
+#include <thread>
 
 class Client final
 {
 public:
-    explicit Client(snet::EventLoop *loop)
-        : loop_(loop)
+    Client(snet::EventLoop *loop, int *client_counter)
+        : client_counter_(client_counter),
+          loop_(loop)
     {
-    }
-
-    static void SetClientNumber(int num)
-    {
-        client_number = num;
     }
 
     void Connect(const char *ip, unsigned short port)
@@ -38,7 +35,7 @@ private:
             return Stop();
 
         connection_->SetOnError(
-            [this] (){
+            [this] () {
                 connection_->Close();
                 Stop();
             });
@@ -93,7 +90,7 @@ private:
 
     void Stop()
     {
-        if (--client_number == 0)
+        if (--*client_counter_ == 0)
             loop_->Stop();
     }
 
@@ -104,20 +101,57 @@ private:
 
     static const std::size_t kDataSize = 16 * 1024;
 
-    static int client_number;
-
+    int *client_counter_;
     snet::EventLoop *loop_;
     std::unique_ptr<snet::Connector> connector_;
     std::unique_ptr<snet::Connection> connection_;
 };
 
-int Client::client_number = 0;
+class Worker final
+{
+public:
+    Worker(const char *ip, unsigned short port, int client_num)
+        : client_num_(client_num),
+          thread_(&Worker::ThreadFunc, this, ip, port)
+    {
+    }
+
+    Worker(const Worker &) = delete;
+    void operator = (const Worker &) = delete;
+
+    ~Worker()
+    {
+        thread_.join();
+    }
+
+private:
+    void ThreadFunc(const char *ip, unsigned short port)
+    {
+        event_loop_ = snet::CreateEventLoop();
+
+        for (int i = 0; i < client_num_; ++i)
+        {
+            std::unique_ptr<Client> client(
+                new Client(event_loop_.get(), &client_num_));
+            client->Connect(ip, port);
+            clients_.push_back(std::move(client));
+        }
+
+        event_loop_->Loop();
+    }
+
+    int client_num_;
+    std::unique_ptr<snet::EventLoop> event_loop_;
+    std::vector<std::unique_ptr<Client>> clients_;
+    std::thread thread_;
+};
 
 int main(int argc, const char **argv)
 {
-    if (argc != 4)
+    if (argc != 5)
     {
-        fprintf(stderr, "Usage: %s server_ip port client_num\n", argv[0]);
+        fprintf(stderr, "Usage: %s server_ip port clients_per_thread threads\n",
+                argv[0]);
         return 1;
     }
 
@@ -129,21 +163,25 @@ int main(int argc, const char **argv)
         client_num = 1;
     }
 
+    auto threads = atoi(argv[4]);
+    if (threads <= 0)
+    {
+        fprintf(stderr, "Invalid thread nubmer %d, use 1 thread\n", threads);
+        threads = 1;
+    }
+
     int max_files = 1024;
     if (!snet::SetMaxOpenFiles(max_files))
         fprintf(stderr, "Change max open files to %d failed\n", max_files);
 
-    auto event_loop = snet::CreateEventLoop();
-    std::vector<std::unique_ptr<Client>> clients;
+    std::vector<std::unique_ptr<Worker>> worker_list;
 
-    Client::SetClientNumber(client_num);
-    for (int i = 0; i < client_num; ++i)
+    for (int i = 0; i < threads; ++i)
     {
-        std::unique_ptr<Client> client(new Client(event_loop.get()));
-        client->Connect(argv[1], atoi(argv[2]));
-        clients.push_back(std::move(client));
+        std::unique_ptr<Worker> worker(
+            new Worker(argv[1], atoi(argv[2]), client_num));
+        worker_list.push_back(std::move(worker));
     }
 
-    event_loop->Loop();
     return 0;
 }
