@@ -29,7 +29,10 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
         PRIVATE KQueue.cpp)
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     target_sources(snet
+        PRIVATE AddrInfoResolver.cpp
         PRIVATE Epoll.cpp)
+
+    target_link_libraries(snet anl)
 endif()
 
 add_subdirectory(test)

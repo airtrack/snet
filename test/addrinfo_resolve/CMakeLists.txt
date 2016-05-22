@@ -1,0 +1,3 @@
+add_executable(test_addrinfo_resolve TestAddrInfoResolve.cpp)
+
+target_link_libraries(test_addrinfo_resolve snet)
