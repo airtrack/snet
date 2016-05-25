@@ -30,6 +30,36 @@ void SetSockAddrIn(struct sockaddr_in *sin,
     sin->sin_addr.s_addr = inet_addr(ip);
 }
 
+std::string SockAddrToString(const struct sockaddr &addr)
+{
+    if (addr.sa_family == AF_INET)
+    {
+        auto inet = reinterpret_cast<const struct sockaddr_in *>(&addr);
+        return SockAddrToString(*inet);
+    }
+    else if (addr.sa_family == AF_INET6)
+    {
+        auto inet6 = reinterpret_cast<const struct sockaddr_in6 *>(&addr);
+        return SockAddrToString(*inet6);
+    }
+
+    return std::string();
+}
+
+std::string SockAddrToString(const struct sockaddr_in &addr_in)
+{
+    char ipv4[INET_ADDRSTRLEN] = { 0 };
+    inet_ntop(AF_INET, &addr_in.sin_addr, ipv4, sizeof(ipv4));
+    return std::string(ipv4);
+}
+
+std::string SockAddrToString(const struct sockaddr_in6 &addr_in6)
+{
+    char ipv6[INET6_ADDRSTRLEN] = { 0 };
+    inet_ntop(AF_INET6, &addr_in6.sin6_addr, ipv6, sizeof(ipv6));
+    return std::string(ipv6);
+}
+
 bool SetMaxOpenFiles(rlim_t num)
 {
     struct rlimit files;

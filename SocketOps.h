@@ -9,6 +9,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <string.h>
+#include <string>
 
 namespace snet
 {
@@ -19,6 +20,10 @@ void SetSocketReuseAddr(int fd);
 
 void SetSockAddrIn(struct sockaddr_in *sin,
                    const char *ip, unsigned short port);
+
+std::string SockAddrToString(const struct sockaddr &addr);
+std::string SockAddrToString(const struct sockaddr_in &addr_in);
+std::string SockAddrToString(const struct sockaddr_in6 &addr_in6);
 
 bool SetMaxOpenFiles(rlim_t num);
 

@@ -1,4 +1,5 @@
 #include "EventLoop.h"
+#include "SocketOps.h"
 #include "AddrInfoResolver.h"
 #include <stdio.h>
 #include <string>
@@ -29,10 +30,8 @@ int main(int argc, const char **argv)
                 {
                     if (addr->sa_family == AF_INET)
                     {
-                        char buf[INET_ADDRSTRLEN] = { 0 };
-                        auto inet = reinterpret_cast<const sockaddr_in *>(addr);
-                        inet_ntop(AF_INET, &inet->sin_addr, buf, sizeof(buf));
-                        fprintf(stderr, "%s ", buf);
+                        auto ip = snet::SockAddrToString(*addr);
+                        fprintf(stderr, "%s ", ip.c_str());
                     }
                 }
 
