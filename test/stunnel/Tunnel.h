@@ -1,8 +1,10 @@
 #ifndef TUNNEL_H
 #define TUNNEL_H
 
-#include "EventLoop.h"
+#include "Acceptor.h"
+#include "Connector.h"
 #include "Connection.h"
+#include "EventLoop.h"
 #include "Timer.h"
 
 namespace tunnel
@@ -47,6 +49,57 @@ private:
     ErrorHandler error_handler_;
     DataHandler data_handler_;
     std::unique_ptr<snet::Connection> connection_;
+};
+
+class Client final
+{
+public:
+    using OnConnected = std::function<void ()>;
+    using ErrorHandler = Connection::ErrorHandler;
+    using DataHandler = Connection::DataHandler;
+
+    Client(const std::string &ip, unsigned short port,
+           snet::EventLoop *loop, snet::TimerList *timer_list);
+
+    Client(const Client &) = delete;
+    void operator = (const Client &) = delete;
+
+    void SetErrorHandler(const ErrorHandler &error_handler);
+    void SetDataHandler(const DataHandler &data_handler);
+    void Connect(const OnConnected &onc);
+
+private:
+    void HandleConnect(std::unique_ptr<snet::Connection> connection,
+                       const OnConnected &onc);
+
+    snet::TimerList *timer_list_;
+    snet::Connector connector_;
+
+    ErrorHandler error_handler_;
+    DataHandler data_handler_;
+    std::unique_ptr<Connection> connection_;
+};
+
+class Server final
+{
+public:
+    using OnNewConnection = std::function<void (std::unique_ptr<Connection>)>;
+
+    Server(const std::string &ip, unsigned short port,
+           snet::EventLoop *loop, snet::TimerList *timer_list);
+
+    Server(const Server &) = delete;
+    void operator = (const Server &) = delete;
+
+    bool IsListenOk() const;
+    void SetOnNewConnection(const OnNewConnection &onc);
+
+private:
+    void HandleNewConnection(std::unique_ptr<snet::Connection> connection);
+
+    OnNewConnection onc_;
+    snet::Acceptor acceptor_;
+    snet::TimerList *timer_list_;
 };
 
 } // namespace tunnel

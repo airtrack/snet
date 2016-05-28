@@ -141,4 +141,73 @@ void Connection::HandleHeartbeat()
     SendBuffer(std::move(buffer));
 }
 
+Client::Client(const std::string &ip, unsigned short port,
+               snet::EventLoop *loop, snet::TimerList *timer_list)
+    : timer_list_(timer_list),
+      connector_(ip, port, loop)
+{
+}
+
+void Client::SetErrorHandler(const ErrorHandler &error_handler)
+{
+    error_handler_ = error_handler;
+}
+
+void Client::SetDataHandler(const DataHandler &data_handler)
+{
+    data_handler_ = data_handler;
+}
+
+void Client::Connect(const OnConnected &onc)
+{
+    connector_.Connect(
+        [this, onc] (std::unique_ptr<snet::Connection> connection) {
+            HandleConnect(std::move(connection), onc);
+        });
+}
+
+void Client::HandleConnect(std::unique_ptr<snet::Connection> connection,
+                           const OnConnected &onc)
+{
+    if (connection)
+    {
+        connection_.reset(new Connection(std::move(connection), timer_list_));
+        connection_->SetErrorHandler(error_handler_);
+        connection_->SetDataHandler(data_handler_);
+
+        onc();
+    }
+    else
+    {
+        error_handler_();
+    }
+}
+
+Server::Server(const std::string &ip, unsigned short port,
+               snet::EventLoop *loop, snet::TimerList *timer_list)
+    : acceptor_(ip, port, loop),
+      timer_list_(timer_list)
+{
+    acceptor_.SetOnNewConnection(
+        [this] (std::unique_ptr<snet::Connection> connection) {
+            HandleNewConnection(std::move(connection));
+        });
+}
+
+bool Server::IsListenOk() const
+{
+    return acceptor_.IsListenOk();
+}
+
+void Server::SetOnNewConnection(const OnNewConnection &onc)
+{
+    onc_ = onc;
+}
+
+void Server::HandleNewConnection(std::unique_ptr<snet::Connection> connection)
+{
+    onc_(std::unique_ptr<Connection>(
+        new Connection(std::move(connection), timer_list_)));
+}
+
 } // namespace tunnel
