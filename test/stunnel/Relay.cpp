@@ -35,7 +35,9 @@ void Client::ConnectHost(const std::string &host)
 
 void Client::Send(std::unique_ptr<snet::Buffer> buffer)
 {
-    connection_->Send(std::move(buffer));
+    if (connection_->Send(std::move(buffer)) ==
+        static_cast<int>(snet::SendE::Error))
+        event_handler_(Event::SendError);
 }
 
 void Client::Connect(const snet::AddrInfoResolver::SockAddrs &addrs)
@@ -82,7 +84,7 @@ void Client::HandleConnect(std::unique_ptr<snet::Connection> connection)
 void Client::HandleReceivable()
 {
     std::unique_ptr<snet::Buffer> buffer(
-        new snet::Buffer(new char[kBufferSize], kBufferSize));
+        new snet::Buffer(new char[kBufferSize], kBufferSize, snet::OpDeleter));
 
     auto ret = connection_->Recv(buffer.get());
     if (ret == static_cast<int>(snet::RecvE::PeerClosed))

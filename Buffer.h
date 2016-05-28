@@ -30,6 +30,11 @@ struct Buffer
     }
 };
 
+inline void OpDeleter(Buffer *buffer)
+{
+    delete [] buffer->buf;
+}
+
 } // namespace snet
 
 #endif // BUFFER_H

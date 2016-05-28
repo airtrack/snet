@@ -23,6 +23,7 @@ public:
         ConnectionError,
         PeerClosed,
         RecvError,
+        SendError,
     };
 
     using EventHandler = std::function<void (Event)>;
