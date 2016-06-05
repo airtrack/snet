@@ -33,6 +33,13 @@ void Client::ConnectHost(const std::string &host)
         });
 }
 
+bool Client::GetPeerAddress(struct sockaddr_in *inet)
+{
+    if (connection_)
+        return connection_->GetPeerAddress(inet);
+    return false;
+}
+
 void Client::Send(std::unique_ptr<snet::Buffer> buffer)
 {
     if (connection_->Send(std::move(buffer)) ==
@@ -79,6 +86,8 @@ void Client::HandleConnect(std::unique_ptr<snet::Connection> connection)
         [this] () { event_handler_(Event::ConnectionError); });
     connection_->SetOnReceivable(
         [this] () { HandleReceivable(); });
+
+    event_handler_(Event::ConnectServerSuccess);
 }
 
 void Client::HandleReceivable()
@@ -93,7 +102,7 @@ void Client::HandleReceivable()
         event_handler_(Event::RecvError);
     else if (ret != static_cast<int>(snet::RecvE::NoAvailData))
     {
-        buffer->pos = ret;
+        buffer->size = ret;
         data_handler_(std::move(buffer));
     }
 }

@@ -3,6 +3,7 @@
 
 #include "Buffer.h"
 #include "EventLoop.h"
+#include "SocketOps.h"
 #include <functional>
 #include <memory>
 #include <queue>
@@ -39,6 +40,7 @@ public:
     int Send(std::unique_ptr<Buffer> buffer);
     int Recv(Buffer *buffer);
     void Close();
+    bool GetPeerAddress(struct sockaddr_in *inet);
 
     void SetOnError(const OnError &oe);
     void SetOnReceivable(const OnReceivable &onr);

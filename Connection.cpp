@@ -1,5 +1,4 @@
 #include "Connection.h"
-#include "SocketOps.h"
 #include <errno.h>
 
 namespace snet
@@ -75,6 +74,13 @@ void Connection::Close()
         close(fd_);
         fd_ = -1;
     }
+}
+
+bool Connection::GetPeerAddress(struct sockaddr_in *inet)
+{
+    socklen_t size = sizeof(*inet);
+    return getpeername(fd_, reinterpret_cast<struct sockaddr *>(inet),
+                       &size) == 0;
 }
 
 void Connection::SetOnError(const OnError &oe)

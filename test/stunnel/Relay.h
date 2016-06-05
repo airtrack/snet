@@ -20,6 +20,7 @@ public:
     {
         AddrInfoResolveFail = 1,
         ConnectServerFail,
+        ConnectServerSuccess,
         ConnectionError,
         PeerClosed,
         RecvError,
@@ -38,6 +39,7 @@ public:
     void SetEventHandler(const EventHandler &event_handler);
     void SetDataHandler(const DataHandler &data_handler);
     void ConnectHost(const std::string &host);
+    bool GetPeerAddress(struct sockaddr_in *inet);
     void Send(std::unique_ptr<snet::Buffer> buffer);
 
 private:
