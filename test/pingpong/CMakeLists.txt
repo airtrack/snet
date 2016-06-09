@@ -1,5 +1,5 @@
-add_executable(client Client.cpp)
-add_executable(server Server.cpp)
+add_executable(pclient Client.cpp)
+add_executable(pserver Server.cpp)
 
-target_link_libraries(client snet)
-target_link_libraries(server snet)
+target_link_libraries(pclient snet)
+target_link_libraries(pserver snet)
