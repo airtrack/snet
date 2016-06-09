@@ -1,4 +1,5 @@
 add_executable(sclient
+    Socks5.cpp
     Tunnel.cpp
     Client.cpp)
 
