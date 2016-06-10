@@ -49,6 +49,7 @@ public:
     using OnTimeout = std::function<void ()>;
 
     explicit Timer(TimerList *timer_list);
+    ~Timer();
 
     Timer(const Timer &) = delete;
     void operator = (const Timer &) = delete;

@@ -10,6 +10,11 @@ Timer::Timer(TimerList *timer_list)
 {
 }
 
+Timer::~Timer()
+{
+    timer_list_->DelTimer(&handle_);
+}
+
 void Timer::ExpireAt(const TimePoint &time_point)
 {
     timer_list_->DelTimer(&handle_);
