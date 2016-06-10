@@ -8,8 +8,15 @@ Client::Client(unsigned short port, snet::EventLoop *loop,
                snet::AddrInfoResolver *addrinfo_resolver)
     : loop_(loop),
       addrinfo_resolver_(addrinfo_resolver),
+      request_(nullptr),
       port_(port)
 {
+}
+
+Client::~Client()
+{
+    if (request_)
+        addrinfo_resolver_->CancelRequest(request_);
 }
 
 void Client::SetEventHandler(const EventHandler &event_handler)
@@ -24,8 +31,9 @@ void Client::SetDataHandler(const DataHandler &data_handler)
 
 void Client::ConnectHost(const std::string &host)
 {
-    addrinfo_resolver_->AsyncResolve(
+    request_ = addrinfo_resolver_->AsyncResolve(
         host, [this] (const snet::AddrInfoResolver::SockAddrs &addrs) {
+            request_ = nullptr;
             if (addrs.empty())
                 event_handler_(Event::AddrInfoResolveFail);
             else

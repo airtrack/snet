@@ -32,6 +32,7 @@ public:
 
     Client(unsigned short port, snet::EventLoop *loop,
            snet::AddrInfoResolver *addrinfo_resolver);
+    ~Client();
 
     Client(const Client &) = delete;
     void operator = (const Client &) = delete;
@@ -52,6 +53,8 @@ private:
 
     snet::EventLoop *loop_;
     snet::AddrInfoResolver *addrinfo_resolver_;
+    const snet::AddrInfoResolver::Request *request_;
+
     std::unique_ptr<snet::Connector> connector_;
     std::unique_ptr<snet::Connection> connection_;
 
