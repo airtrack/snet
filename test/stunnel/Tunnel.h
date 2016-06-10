@@ -67,6 +67,7 @@ public:
     void SetErrorHandler(const ErrorHandler &error_handler);
     void SetDataHandler(const DataHandler &data_handler);
     void Connect(const OnConnected &onc);
+    void Send(std::unique_ptr<snet::Buffer> buffer);
 
 private:
     void HandleConnect(std::unique_ptr<snet::Connection> connection,

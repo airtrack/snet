@@ -166,6 +166,12 @@ void Client::Connect(const OnConnected &onc)
         });
 }
 
+void Client::Send(std::unique_ptr<snet::Buffer> buffer)
+{
+    if (connection_)
+        connection_->Send(std::move(buffer));
+}
+
 void Client::HandleConnect(std::unique_ptr<snet::Connection> connection,
                            const OnConnected &onc)
 {
