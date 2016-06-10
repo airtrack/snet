@@ -8,8 +8,9 @@ namespace snet
 {
 
 KQueue::KQueue()
-    : kqueue_fd_(kqueue()),
-      stop_(false)
+    : stop_(false),
+      kqueue_fd_(kqueue()),
+      events_(new struct kevent[kMaxEvents])
 {
 }
 
@@ -47,6 +48,12 @@ void KQueue::DelEventHandler(EventHandler *eh)
 
     if (kevc != 0)
         kevent(kqueue_fd_, kev, kevc, nullptr, 0, nullptr);
+
+    for (int i = 0; i < kMaxEvents; ++i)
+    {
+        if (events_[i].udata == eh)
+            events_[i].udata = nullptr;
+    }
 }
 
 void KQueue::UpdateEvents(EventHandler *eh)
@@ -94,26 +101,29 @@ void KQueue::Loop()
 {
     while (!stop_)
     {
-        struct kevent kev[10];
         struct timespec ts;
         ts.tv_sec = 0;
         ts.tv_nsec = 20 * 1000 * 1000;
 
-        auto kevc = kevent(kqueue_fd_, nullptr, 0, kev, 10, &ts);
+        auto kevc = kevent(kqueue_fd_, nullptr, 0,
+                           events_.get(), kMaxEvents, &ts);
 
         for (int i = 0; i < kevc; ++i)
         {
-            auto eh = static_cast<EventHandler *>(kev[i].udata);
+            auto eh = static_cast<EventHandler *>(events_[i].udata);
 
-            switch (kev[i].filter)
+            if (eh)
             {
-            case EVFILT_READ:
-                eh->HandleRead();
-                break;
+                switch (events_[i].filter)
+                {
+                case EVFILT_READ:
+                    eh->HandleRead();
+                    break;
 
-            case EVFILT_WRITE:
-                eh->HandleWrite();
-                break;
+                case EVFILT_WRITE:
+                    eh->HandleWrite();
+                    break;
+                }
             }
         }
 

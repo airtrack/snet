@@ -7,8 +7,9 @@ namespace snet
 {
 
 Epoll::Epoll()
-    : epoll_fd_(epoll_create(1)),
-      stop_(false)
+    : stop_(false),
+      epoll_fd_(epoll_create(1)),
+      events_(new struct epoll_event[kMaxEvents])
 {
 }
 
@@ -30,6 +31,12 @@ void Epoll::DelEventHandler(EventHandler *eh)
 
     auto fd = eh->Fd();
     epoll_ctl(epoll_fd_, EPOLL_CTL_DEL, fd, &event);
+
+    for (int i = 0; i < kMaxEvents; ++i)
+    {
+        if (events_[i].data.ptr == eh)
+            events_[i].data.ptr = nullptr;
+    }
 }
 
 void Epoll::UpdateEvents(EventHandler *eh)
@@ -70,17 +77,23 @@ void Epoll::Loop()
 {
     while (!stop_)
     {
-        struct epoll_event events[10];
-        auto num = epoll_wait(epoll_fd_, events, 10, 20);
+        auto num = epoll_wait(epoll_fd_, events_.get(), kMaxEvents, 20);
 
         for (int i = 0; i < num; ++i)
         {
-            auto eh = static_cast<EventHandler *>(events[i].data.ptr);
+            if (events_[i].events & EPOLLIN)
+            {
+                auto eh = static_cast<EventHandler *>(events_[i].data.ptr);
+                if (eh)
+                    eh->HandleRead();
+            }
 
-            if (events[i].events & EPOLLIN)
-                eh->HandleRead();
-            if (events[i].events & EPOLLOUT)
-                eh->HandleWrite();
+            if (events_[i].events & EPOLLOUT)
+            {
+                auto eh = static_cast<EventHandler *>(events_[i].data.ptr);
+                if (eh)
+                    eh->HandleWrite();
+            }
         }
 
         lh_set_.HandleLoop();

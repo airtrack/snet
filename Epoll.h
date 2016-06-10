@@ -2,6 +2,9 @@
 #define EPOLL_H
 
 #include "EventLoop.h"
+#include <memory>
+
+struct epoll_event;
 
 namespace snet
 {
@@ -23,9 +26,12 @@ public:
 private:
     void SetEpollEvents(int op, EventHandler *eh);
 
-    int epoll_fd_;
+    static const int kMaxEvents = 10;
+
     bool stop_;
+    int epoll_fd_;
     LoopHandlerSet lh_set_;
+    std::unique_ptr<struct epoll_event []> events_;
 };
 
 } // namespace snet

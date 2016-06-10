@@ -2,6 +2,9 @@
 #define KQUEUE_H
 
 #include "EventLoop.h"
+#include <memory>
+
+struct kevent;
 
 namespace snet
 {
@@ -21,9 +24,12 @@ public:
     virtual void Stop() override;
 
 private:
-    int kqueue_fd_;
+    static const int kMaxEvents = 10;
+
     bool stop_;
+    int kqueue_fd_;
     LoopHandlerSet lh_set_;
+    std::unique_ptr<struct kevent []> events_;
 };
 
 } // namespace snet
