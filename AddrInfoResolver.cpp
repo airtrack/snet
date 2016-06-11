@@ -64,7 +64,7 @@ void AddrInfoResolver::CancelRequest(const Request *request)
         if (it->get() == request)
         {
             gai_cancel(&(*it)->req);
-            requests_.erase(it);
+            (*it)->on_resolve = nullptr;
             return ;
         }
     }
@@ -118,6 +118,9 @@ void AddrInfoResolver::CheckResult()
 
 void AddrInfoResolver::ResolveSuccess(const Request &request)
 {
+    if (!request.on_resolve)
+        return ;
+
     SockAddrs addrs;
 
     for (auto res = request.req.ar_result; res; res = res->ai_next)
@@ -131,6 +134,9 @@ void AddrInfoResolver::ResolveSuccess(const Request &request)
 
 void AddrInfoResolver::ResolveFail(const Request &request)
 {
+    if (!request.on_resolve)
+        return ;
+
     SockAddrs addrs;
     request.on_resolve(addrs);
 }
