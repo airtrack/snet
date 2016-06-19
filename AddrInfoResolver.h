@@ -2,6 +2,7 @@
 #define ADDR_INFO_RESOLVER_H
 
 #include "EventLoop.h"
+#include "MessageQueue.h"
 #include <arpa/inet.h>
 #include <functional>
 #include <vector>
@@ -18,7 +19,7 @@ public:
     using SockAddrs = std::vector<const struct sockaddr *>;
     using OnResolve = std::function<void (const SockAddrs &)>;
 
-    AddrInfoResolver();
+    explicit AddrInfoResolver(std::size_t resolver_num);
     ~AddrInfoResolver();
 
     AddrInfoResolver(const AddrInfoResolver &) = delete;
@@ -32,11 +33,15 @@ public:
     virtual void HandleStop() override;
 
 private:
-    void CheckResult();
-    void ResolveSuccess(const Request &request);
-    void ResolveFail(const Request &request);
+    class Resolver;
 
+    std::size_t FindResolver() const;
+    void HandleResolve(const Request &request);
+    void RemoveRequest(const Request *request);
+
+    snet::MessageQueue<Request *> resolved_;
     std::vector<std::unique_ptr<Request>> requests_;
+    std::vector<std::unique_ptr<Resolver>> resolvers_;
 };
 
 } // namespace snet

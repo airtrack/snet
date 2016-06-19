@@ -1,22 +1,25 @@
 #include "AddrInfoResolver.h"
+#include <sys/types.h>
+#include <sys/socket.h>
 #include <netdb.h>
 #include <string.h>
+#include <atomic>
+#include <thread>
 
 namespace snet
 {
 
 struct AddrInfoResolver::Request
 {
-    std::string host;
+    const std::string host;
     OnResolve on_resolve;
-    struct gaicb req;
+    struct addrinfo *result;
 
     Request(const std::string &h, const OnResolve &onr)
         : host(h),
-          on_resolve(onr)
+          on_resolve(onr),
+          result(nullptr)
     {
-        memset(&req, 0, sizeof(req));
-        req.ar_name = host.c_str();
     }
 
     Request(const Request &) = delete;
@@ -24,13 +27,75 @@ struct AddrInfoResolver::Request
 
     ~Request()
     {
-        if (req.ar_result)
-            freeaddrinfo(req.ar_result);
+        if (result)
+            freeaddrinfo(result);
     }
 };
 
-AddrInfoResolver::AddrInfoResolver()
+class AddrInfoResolver::Resolver final
 {
+public:
+    explicit Resolver(snet::MessageQueue<Request *> *resolved)
+        : resolved_(resolved),
+          counter_(0),
+          thread_(&Resolver::ResolveFunc, this)
+    {
+    }
+
+    ~Resolver()
+    {
+        Resolve(nullptr);
+        thread_.join();
+    }
+
+    Resolver(const Resolver &) = delete;
+    void operator = (const Resolver &) = delete;
+
+    void Resolve(Request *request)
+    {
+        if (request)
+            ++counter_;
+        requests_.Send(request);
+    }
+
+    int GetRequestCount() const
+    {
+        return counter_;
+    }
+
+private:
+    void ResolveFunc()
+    {
+        while (true)
+        {
+            auto request = requests_.Recv();
+            if (!request)
+                break;
+
+            ResolveRequest(request);
+        }
+    }
+
+    void ResolveRequest(Request *request)
+    {
+        getaddrinfo(request->host.c_str(), nullptr, nullptr, &request->result);
+        resolved_->Send(request);
+        --counter_;
+    }
+
+    snet::MessageQueue<Request *> requests_;
+    snet::MessageQueue<Request *> *resolved_;
+    std::atomic<int> counter_;
+    std::thread thread_;
+};
+
+AddrInfoResolver::AddrInfoResolver(std::size_t resolver_num)
+{
+    for (std::size_t i = 0; i < resolver_num; ++i)
+    {
+        resolvers_.push_back(
+            std::unique_ptr<Resolver>(new Resolver(&resolved_)));
+    }
 }
 
 AddrInfoResolver::~AddrInfoResolver()
@@ -40,21 +105,15 @@ AddrInfoResolver::~AddrInfoResolver()
 const AddrInfoResolver::Request * AddrInfoResolver::AsyncResolve(
     const std::string &host, const OnResolve &on_resolve)
 {
-    std::unique_ptr<Request> request(new Request(host, on_resolve));
+    auto req = new Request(host, on_resolve);
+    std::unique_ptr<Request> request(req);
 
-    struct gaicb *list[] = { &request->req };
-    auto ret = getaddrinfo_a(GAI_NOWAIT, list, 1, nullptr);
+    requests_.push_back(std::move(request));
 
-    if (ret)
-    {
-        ResolveFail(*request);
-        return nullptr;
-    }
-    else
-    {
-        requests_.push_back(std::move(request));
-        return requests_.back().get();
-    }
+    auto index = FindResolver();
+    resolvers_[index]->Resolve(req);
+
+    return req;
 }
 
 void AddrInfoResolver::CancelRequest(const Request *request)
@@ -63,7 +122,6 @@ void AddrInfoResolver::CancelRequest(const Request *request)
     {
         if (it->get() == request)
         {
-            gai_cancel(&(*it)->req);
             (*it)->on_resolve = nullptr;
             return ;
         }
@@ -74,56 +132,50 @@ void AddrInfoResolver::HandleLoop()
 {
     if (!requests_.empty())
     {
-        std::vector<struct gaicb *> requests;
-        requests.reserve(requests_.size());
+        while (true)
+        {
+            auto resolved = resolved_.TryRecv();
+            if (!resolved)
+                break;
 
-        for (const auto &req : requests_)
-            requests.push_back(&req->req);
-
-        struct timespec timeout;
-        timeout.tv_sec = 0;
-        timeout.tv_nsec = 0;
-
-        gai_suspend(&requests[0], requests.size(), &timeout);
-        CheckResult();
+            auto request = *resolved;
+            HandleResolve(*request);
+            RemoveRequest(request);
+        }
     }
 }
 
 void AddrInfoResolver::HandleStop()
 {
-    gai_cancel(nullptr);
-    requests_.clear();
 }
 
-void AddrInfoResolver::CheckResult()
+std::size_t AddrInfoResolver::FindResolver() const
 {
     std::size_t index = 0;
+    auto min = resolvers_[index]->GetRequestCount();
 
-    while (index < requests_.size())
+    auto size = resolvers_.size();
+    for (std::size_t i = 1; i < size; ++i)
     {
-        auto it = requests_.begin() + index;
-        auto ret = gai_error(&(*it)->req);
-
-        if (ret == 0)
-            ResolveSuccess(**it);
-        else if (ret != EAI_INPROGRESS)
-            ResolveFail(**it);
-
-        if (ret == EAI_INPROGRESS)
-            ++index;
-        else
-            requests_.erase(it);
+        auto count = resolvers_[i]->GetRequestCount();
+        if (count < min)
+        {
+            min = count;
+            index = i;
+        }
     }
+
+    return index;
 }
 
-void AddrInfoResolver::ResolveSuccess(const Request &request)
+void AddrInfoResolver::HandleResolve(const Request &request)
 {
     if (!request.on_resolve)
         return ;
 
     SockAddrs addrs;
 
-    for (auto res = request.req.ar_result; res; res = res->ai_next)
+    for (auto res = request.result; res; res = res->ai_next)
     {
         if (res->ai_family == AF_INET && res->ai_socktype == SOCK_STREAM)
             addrs.push_back(res->ai_addr);
@@ -132,13 +184,16 @@ void AddrInfoResolver::ResolveSuccess(const Request &request)
     request.on_resolve(addrs);
 }
 
-void AddrInfoResolver::ResolveFail(const Request &request)
+void AddrInfoResolver::RemoveRequest(const Request *request)
 {
-    if (!request.on_resolve)
-        return ;
-
-    SockAddrs addrs;
-    request.on_resolve(addrs);
+    for (auto it = requests_.begin(); it != requests_.end(); ++it)
+    {
+        if (it->get() == request)
+        {
+            requests_.erase(it);
+            return ;
+        }
+    }
 }
 
 } // namespace snet

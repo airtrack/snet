@@ -198,7 +198,7 @@ int main(int argc, const char **argv)
 
     auto event_loop = snet::CreateEventLoop();
     snet::TimerList timer_list;
-    snet::AddrInfoResolver addrinfo_resolver;
+    snet::AddrInfoResolver addrinfo_resolver(20);
 
     STunnelServer server(argv[1], atoi(argv[2]), argv[3],
                          event_loop.get(), &timer_list,

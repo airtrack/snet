@@ -13,7 +13,7 @@ int main(int argc, const char **argv)
     }
 
     auto event_loop = snet::CreateEventLoop();
-    snet::AddrInfoResolver addrinfo_resolver;
+    snet::AddrInfoResolver addrinfo_resolver(20);
 
     auto cancel = addrinfo_resolver.AsyncResolve(
         "cancel.com", [] (const snet::AddrInfoResolver::SockAddrs &) { });

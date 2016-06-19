@@ -17,6 +17,7 @@ set(LIBRARY_OUTPUT_PATH "${PROJECT_BINARY_DIR}/lib")
 
 add_library(snet
     Acceptor.cpp
+    AddrInfoResolver.cpp
     Connector.cpp
     Connection.cpp
     EventLoop.cpp
@@ -29,10 +30,7 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
         PRIVATE KQueue.cpp)
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     target_sources(snet
-        PRIVATE AddrInfoResolver.cpp
         PRIVATE Epoll.cpp)
-
-    target_link_libraries(snet anl)
 endif()
 
 add_subdirectory(test)
