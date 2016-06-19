@@ -13,10 +13,12 @@ class Server final
 {
 public:
     Server(const std::string &tunnel_ip, unsigned short tunnel_port,
-           snet::EventLoop *loop, snet::TimerList *timer_list)
+           const std::string &tunnel_key, snet::EventLoop *loop,
+           snet::TimerList *timer_list)
         : id_generator_(0),
           tunnel_port_(tunnel_port),
           tunnel_ip_(tunnel_ip),
+          tunnel_key_(tunnel_key),
           loop_(loop),
           timer_list_(timer_list),
           server_(SOCKS5_LISTEN_IP, SOCKS5_LISTEN_PORT, loop),
@@ -81,7 +83,7 @@ private:
     void CreateTunnel()
     {
         tunnel_.reset(new tunnel::Client(tunnel_ip_, tunnel_port_,
-                                         loop_, timer_list_));
+                                         tunnel_key_, loop_, timer_list_));
         tunnel_->SetErrorHandler(
             [this] () {
                 HandleTunnelError();
@@ -165,6 +167,7 @@ private:
     unsigned long long id_generator_;
     unsigned short tunnel_port_;
     std::string tunnel_ip_;
+    std::string tunnel_key_;
 
     snet::EventLoop *loop_;
     snet::TimerList *timer_list_;
@@ -179,16 +182,16 @@ private:
 
 int main(int argc, const char **argv)
 {
-    if (argc != 3)
+    if (argc != 4)
     {
-        fprintf(stderr, "Usage: %s ServerIP Port\n", argv[0]);
+        fprintf(stderr, "Usage: %s ServerIP Port Key\n", argv[0]);
         return 1;
     }
 
     auto event_loop = snet::CreateEventLoop();
     snet::TimerList timer_list;
 
-    Server server(argv[1], atoi(argv[2]),
+    Server server(argv[1], atoi(argv[2]), argv[3],
                   event_loop.get(), &timer_list);
 
     if (!server.IsListenOk())

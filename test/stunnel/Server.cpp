@@ -144,11 +144,12 @@ class STunnelServer final
 {
 public:
     STunnelServer(const std::string &ip, unsigned short port,
-                  snet::EventLoop *loop, snet::TimerList *timer_list,
+                  const std::string &key, snet::EventLoop *loop,
+                  snet::TimerList *timer_list,
                   snet::AddrInfoResolver *addrinfo_resolver)
         : loop_(loop),
           addrinfo_resolver_(addrinfo_resolver),
-          server_(ip, port, loop, timer_list)
+          server_(ip, port, key, loop, timer_list)
     {
         server_.SetOnNewConnection(
             [this] (std::unique_ptr<tunnel::Connection> connection) {
@@ -189,9 +190,9 @@ private:
 
 int main(int argc, const char **argv)
 {
-    if (argc != 3)
+    if (argc != 4)
     {
-        fprintf(stderr, "Usage: %s IP Port\n", argv[0]);
+        fprintf(stderr, "Usage: %s IP Port Key\n", argv[0]);
         return 1;
     }
 
@@ -199,9 +200,8 @@ int main(int argc, const char **argv)
     snet::TimerList timer_list;
     snet::AddrInfoResolver addrinfo_resolver;
 
-    STunnelServer server(argv[1], atoi(argv[2]),
-                         event_loop.get(),
-                         &timer_list,
+    STunnelServer server(argv[1], atoi(argv[2]), argv[3],
+                         event_loop.get(), &timer_list,
                          &addrinfo_resolver);
     if (!server.IsListenOk())
     {

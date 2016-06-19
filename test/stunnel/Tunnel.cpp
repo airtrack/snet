@@ -5,15 +5,21 @@
 namespace tunnel
 {
 
+#define VERIFY_DATA "#&^@!~-=`"
+
 // Clang needs link static const which referenced in lambda, make clang happy.
 const int Connection::kAliveSeconds = 15;
 const int Connection::kHeartbeatSeconds = 5;
 
 Connection::Connection(std::unique_ptr<snet::Connection> connection,
-                       snet::TimerList *timer_list)
-    : recv_length_buffer_(recv_length_, sizeof(recv_length_)),
+                       const std::string &key, snet::TimerList *timer_list,
+                       State state)
+    : state_(state),
+      recv_length_buffer_(recv_length_, sizeof(recv_length_)),
       alive_timer_(timer_list),
       heartbeat_timer_(timer_list),
+      encryptor_(key.data(), key.size()),
+      decryptor_(key.data(), key.size()),
       connection_(std::move(connection))
 {
     memset(heartbeat_, 0, sizeof(heartbeat_));
@@ -39,7 +45,29 @@ void Connection::SetDataHandler(const DataHandler &data_handler)
     data_handler_ = data_handler;
 }
 
+void Connection::Handshake(const OnHandshakeOk &oh)
+{
+    if (state_ == State::Connecting)
+    {
+        on_handshake_ok_ = oh;
+        if (SetupEncryptor())
+        {
+            std::unique_ptr<snet::Buffer> data(
+                new snet::Buffer(new char[sizeof(VERIFY_DATA)],
+                                 sizeof(VERIFY_DATA), snet::OpDeleter));
+            memcpy(data->buf, VERIFY_DATA, sizeof(VERIFY_DATA));
+            SendEncryptBuffer(encryptor_.Encrypt(std::move(data)));
+        }
+    }
+}
+
 void Connection::Send(std::unique_ptr<snet::Buffer> buffer)
+{
+    if (state_ == State::Running)
+        SendEncryptBuffer(encryptor_.Encrypt(std::move(buffer)));
+}
+
+bool Connection::SendEncryptBuffer(std::unique_ptr<snet::Buffer> buffer)
 {
     std::unique_ptr<snet::Buffer> length(
         new snet::Buffer(new char[kLengthBytes],
@@ -49,7 +77,9 @@ void Connection::Send(std::unique_ptr<snet::Buffer> buffer)
     *reinterpret_cast<unsigned short *>(length->buf) = htons(size);
 
     if (SendBuffer(std::move(length)))
-        SendBuffer(std::move(buffer));
+        return SendBuffer(std::move(buffer));
+    else
+        return false;
 }
 
 bool Connection::SendBuffer(std::unique_ptr<snet::Buffer> buffer)
@@ -121,7 +151,11 @@ void Connection::HandleReceivable()
             {
                 recv_buffer_->pos = 0;
                 recv_length_buffer_.pos = 0;
-                data_handler_(std::move(recv_buffer_));
+
+                if (state_ == State::Running)
+                    data_handler_(decryptor_.Decrypt(std::move(recv_buffer_)));
+                else
+                    HandleHandshake();
             }
         }
     }
@@ -141,9 +175,78 @@ void Connection::HandleHeartbeat()
     SendBuffer(std::move(buffer));
 }
 
+void Connection::HandleHandshake()
+{
+    switch (state_)
+    {
+    case State::Accepting:
+        if (SetupDecryptor())
+            state_ = State::AcceptingPhase2;
+        break;
+
+    case State::AcceptingPhase2:
+        {
+            auto data = decryptor_.Decrypt(std::move(recv_buffer_));
+            if (data->size != sizeof(VERIFY_DATA))
+                return error_handler_();
+
+            if (memcmp(data->buf, VERIFY_DATA, data->size) != 0)
+                return error_handler_();
+
+            if (SetupEncryptor())
+                state_ = State::Running;
+        }
+        break;
+
+    case State::Connecting:
+        if (SetupDecryptor())
+        {
+            state_ = State::Running;
+            on_handshake_ok_();
+        }
+        break;
+
+    default:
+        error_handler_();
+        break;
+    }
+}
+
+bool Connection::SetupEncryptor()
+{
+    cipher::IVec ivec;
+    ivec.RandomReset();
+
+    std::unique_ptr<snet::Buffer> buffer(
+        new snet::Buffer(reinterpret_cast<char *>(ivec.ivec),
+                         sizeof(ivec.ivec)));
+
+    auto encrypt_buffer = encryptor_.Encrypt(std::move(buffer));
+    encryptor_.SetIVec(ivec);
+
+    return SendEncryptBuffer(std::move(encrypt_buffer));
+}
+
+bool Connection::SetupDecryptor()
+{
+    auto ivec = decryptor_.Decrypt(std::move(recv_buffer_));
+    if (ivec->size != sizeof(cipher::IVec::ivec))
+    {
+        error_handler_();
+        return false;
+    }
+
+    cipher::IVec iv;
+    memcpy(iv.ivec, ivec->buf, sizeof(iv.ivec));
+    decryptor_.SetIVec(iv);
+    return true;
+}
+
 Client::Client(const std::string &ip, unsigned short port,
-               snet::EventLoop *loop, snet::TimerList *timer_list)
-    : timer_list_(timer_list),
+               const std::string &key, snet::EventLoop *loop,
+               snet::TimerList *timer_list)
+    : key_(key),
+      timer_list_(timer_list),
       connector_(ip, port, loop)
 {
 }
@@ -177,11 +280,12 @@ void Client::HandleConnect(std::unique_ptr<snet::Connection> connection,
 {
     if (connection)
     {
-        connection_.reset(new Connection(std::move(connection), timer_list_));
+        connection_.reset(new Connection(std::move(connection),
+                                         key_, timer_list_,
+                                         Connection::State::Connecting));
         connection_->SetErrorHandler(error_handler_);
         connection_->SetDataHandler(data_handler_);
-
-        onc();
+        connection_->Handshake(onc);
     }
     else
     {
@@ -190,8 +294,10 @@ void Client::HandleConnect(std::unique_ptr<snet::Connection> connection,
 }
 
 Server::Server(const std::string &ip, unsigned short port,
-               snet::EventLoop *loop, snet::TimerList *timer_list)
-    : acceptor_(ip, port, loop),
+               const std::string &key, snet::EventLoop *loop,
+               snet::TimerList *timer_list)
+    : key_(key),
+      acceptor_(ip, port, loop),
       timer_list_(timer_list)
 {
     acceptor_.SetOnNewConnection(
@@ -213,7 +319,8 @@ void Server::SetOnNewConnection(const OnNewConnection &onc)
 void Server::HandleNewConnection(std::unique_ptr<snet::Connection> connection)
 {
     onc_(std::unique_ptr<Connection>(
-        new Connection(std::move(connection), timer_list_)));
+        new Connection(std::move(connection), key_, timer_list_,
+                       Connection::State::Accepting)));
 }
 
 } // namespace tunnel
