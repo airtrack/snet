@@ -8,7 +8,7 @@ namespace tunnel
 #define VERIFY_DATA "#&^@!~-=`"
 
 // Clang needs link static const which referenced in lambda, make clang happy.
-const int Connection::kAliveSeconds = 15;
+const int Connection::kAliveSeconds = 60;
 const int Connection::kHeartbeatSeconds = 5;
 
 Connection::Connection(std::unique_ptr<snet::Connection> connection,
@@ -112,7 +112,10 @@ void Connection::HandleReceivable()
         }
 
         if (ret > 0)
+        {
             recv_length_buffer_.pos += ret;
+            alive_timer_.ExpireFromNow(snet::Seconds(kAliveSeconds));
+        }
     }
 
     if (recv_length_buffer_.pos == recv_length_buffer_.size)
@@ -124,7 +127,6 @@ void Connection::HandleReceivable()
             if (length == 0)
             {
                 // Heartbeat
-                alive_timer_.ExpireFromNow(snet::Seconds(kAliveSeconds));
                 recv_length_buffer_.pos = 0;
             }
             else
@@ -146,7 +148,11 @@ void Connection::HandleReceivable()
             }
 
             if (ret > 0)
+            {
                 recv_buffer_->pos += ret;
+                alive_timer_.ExpireFromNow(snet::Seconds(kAliveSeconds));
+            }
+
             if (recv_buffer_->pos == recv_buffer_->size)
             {
                 recv_buffer_->pos = 0;
