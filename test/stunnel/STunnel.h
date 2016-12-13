@@ -15,6 +15,7 @@ enum class Protocol : unsigned char
     Unknown = 0,
     Open,
     OpenSuccess,
+    ShutdownWrite,
     Close,
     Data
 };
@@ -48,6 +49,11 @@ inline std::size_t GetOpenSuccessProtocolSize()
 }
 
 inline std::size_t GetCloseProtocolSize()
+{
+    return GetProtocolHeadSize();
+}
+
+inline std::size_t GetShutdownWriteProtocolSize()
 {
     return GetProtocolHeadSize();
 }
@@ -104,6 +110,12 @@ inline std::unique_ptr<snet::Buffer> PackClose(unsigned long long id)
 {
     auto size = GetCloseProtocolSize();
     return PrepareBufferAndPackHead(size, Protocol::Close, id);
+}
+
+inline std::unique_ptr<snet::Buffer> PackShutdownWrite(unsigned long long id)
+{
+    auto size = GetShutdownWriteProtocolSize();
+    return PrepareBufferAndPackHead(size, Protocol::ShutdownWrite, id);
 }
 
 inline std::unique_ptr<snet::Buffer> PackData(unsigned long long id,
@@ -183,6 +195,15 @@ inline bool UnpackOpenSuccess(snet::Buffer &buffer, unsigned long long *id,
 inline bool UnpackClose(snet::Buffer &buffer, unsigned long long *id)
 {
     if (buffer.pos + GetCloseProtocolSize() - 1 > buffer.size)
+        return false;
+
+    *id = UnpackId(buffer);
+    return true;
+}
+
+inline bool UnpackShutdownWrite(snet::Buffer &buffer, unsigned long long *id)
+{
+    if (buffer.pos + GetShutdownWriteProtocolSize() - 1 > buffer.size)
         return false;
 
     *id = UnpackId(buffer);

@@ -43,6 +43,10 @@ private:
             HandleOpen(std::move(data));
             break;
 
+        case stunnel::Protocol::ShutdownWrite:
+            HandleShutdownWrite(std::move(data));
+            break;
+
         case stunnel::Protocol::Close:
             HandleClose(std::move(data));
             break;
@@ -81,6 +85,17 @@ private:
         relays_.emplace(id, std::move(rclient));
     }
 
+    void HandleShutdownWrite(std::unique_ptr<snet::Buffer> data)
+    {
+        unsigned long long id = 0;
+        if (stunnel::UnpackShutdownWrite(*data, &id))
+        {
+            auto it = relays_.find(id);
+            if (it != relays_.end())
+                it->second->ShutdownWrite();
+        }
+    }
+
     void HandleClose(std::unique_ptr<snet::Buffer> data)
     {
         unsigned long long id = 0;
@@ -104,25 +119,33 @@ private:
     void HandleRelayEvent(unsigned long long id,
                           relay::Client::Event event)
     {
-        if (event == relay::Client::Event::ConnectServerSuccess)
+        switch (event)
         {
-            auto it = relays_.find(id);
-            if (it == relays_.end())
-                tunnel_->Send(stunnel::PackClose(id));
-            else
+        case relay::Client::Event::ConnectServerSuccess:
             {
-                struct sockaddr_in inet;
-                it->second->GetPeerAddress(&inet);
-                tunnel_->Send(
-                    stunnel::PackOpenSuccess(
-                        id, ntohl(inet.sin_addr.s_addr),
-                        ntohs(inet.sin_port)));
+                auto it = relays_.find(id);
+                if (it == relays_.end())
+                    tunnel_->Send(stunnel::PackClose(id));
+                else
+                {
+                    struct sockaddr_in inet;
+                    it->second->GetPeerAddress(&inet);
+                    tunnel_->Send(
+                        stunnel::PackOpenSuccess(
+                            id, ntohl(inet.sin_addr.s_addr),
+                            ntohs(inet.sin_port)));
+                }
             }
-        }
-        else
-        {
+            break;
+
+        case relay::Client::Event::PeerClosed:
+            tunnel_->Send(stunnel::PackShutdownWrite(id));
+            break;
+
+        default:
             tunnel_->Send(stunnel::PackClose(id));
             relays_.erase(id);
+            break;
         }
     }
 

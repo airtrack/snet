@@ -24,6 +24,13 @@ enum class RecvE : int
     Error = -2,
 };
 
+enum class ShutdownT
+{
+    Read,
+    Write,
+    Both
+};
+
 class Connection final
 {
 public:
@@ -39,6 +46,7 @@ public:
 
     int Send(std::unique_ptr<Buffer> buffer);
     int Recv(Buffer *buffer);
+    void Shutdown(ShutdownT type);
     void Close();
     bool GetPeerAddress(struct sockaddr_in *inet);
 

@@ -55,6 +55,11 @@ void Client::Send(std::unique_ptr<snet::Buffer> buffer)
         event_handler_(Event::SendError);
 }
 
+void Client::ShutdownWrite()
+{
+    connection_->Shutdown(snet::ShutdownT::Write);
+}
+
 void Client::Connect(const snet::AddrInfoResolver::SockAddrs &addrs)
 {
     for (auto addr : addrs)

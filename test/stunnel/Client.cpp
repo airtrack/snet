@@ -49,6 +49,10 @@ private:
             [this, id] () {
                 HandleSocks5ConnClose(id);
             });
+        conn->SetOnEof(
+            [this, id] () {
+                HandleSocks5ConnEof(id);
+            });
         conn->SetDataHandler(
             [this, id] (std::unique_ptr<snet::Buffer> data) {
                 HandleSocks5ConnData(id, std::move(data));
@@ -65,6 +69,11 @@ private:
     {
         tunnel_->Send(stunnel::PackClose(id));
         socks5_conns_.erase(id);
+    }
+
+    void HandleSocks5ConnEof(unsigned long long id)
+    {
+        tunnel_->Send(stunnel::PackShutdownWrite(id));
     }
 
     void HandleSocks5ConnData(unsigned long long id,
@@ -127,14 +136,14 @@ private:
             }
             break;
 
-        case stunnel::Protocol::Data:
+        case stunnel::Protocol::ShutdownWrite:
             {
                 unsigned long long id = 0;
-                if (stunnel::UnpackData(*data, &id))
+                if (stunnel::UnpackShutdownWrite(*data, &id))
                 {
                     auto it = socks5_conns_.find(id);
                     if (it != socks5_conns_.end())
-                        it->second->Send(std::move(data));
+                        it->second->ShutdownWrite();
                 }
             }
             break;
@@ -150,6 +159,18 @@ private:
                         it->second->Close();
                         socks5_conns_.erase(it);
                     }
+                }
+            }
+            break;
+
+        case stunnel::Protocol::Data:
+            {
+                unsigned long long id = 0;
+                if (stunnel::UnpackData(*data, &id))
+                {
+                    auto it = socks5_conns_.find(id);
+                    if (it != socks5_conns_.end())
+                        it->second->Send(std::move(data));
                 }
             }
             break;

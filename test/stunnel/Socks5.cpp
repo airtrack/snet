@@ -33,6 +33,11 @@ void Connection::SetOnConnectAddress(const OnConnectAddress &oca)
     on_connect_address_ = oca;
 }
 
+void Connection::SetOnEof(const OnEof &on_eof)
+{
+    on_eof_ = on_eof;
+}
+
 void Connection::SetDataHandler(const DataHandler &data_handler)
 {
     data_handler_ = data_handler;
@@ -51,6 +56,12 @@ void Connection::Send(std::unique_ptr<snet::Buffer> data)
 {
     if (state_ == State::Running)
         connection_->Send(std::move(data));
+}
+
+void Connection::ShutdownWrite()
+{
+    if (state_ == State::Running)
+        connection_->Shutdown(snet::ShutdownT::Write);
 }
 
 void Connection::Close()
@@ -202,6 +213,9 @@ void Connection::RecvData()
     auto ret = connection_->Recv(buffer.get());
     if (ret == static_cast<int>(snet::RecvE::NoAvailData))
         return ;
+
+    if (ret == static_cast<int>(snet::RecvE::PeerClosed))
+        return on_eof_();
 
     if (ret <= 0)
         return HandleError();

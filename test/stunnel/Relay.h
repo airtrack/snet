@@ -42,6 +42,7 @@ public:
     void ConnectHost(const std::string &host);
     bool GetPeerAddress(struct sockaddr_in *inet);
     void Send(std::unique_ptr<snet::Buffer> buffer);
+    void ShutdownWrite();
 
 private:
     void Connect(const snet::AddrInfoResolver::SockAddrs &addrs);

@@ -76,6 +76,24 @@ void Connection::Close()
     }
 }
 
+void Connection::Shutdown(ShutdownT type)
+{
+    switch (type)
+    {
+    case ShutdownT::Read:
+        shutdown(fd_, SHUT_RD);
+        break;
+
+    case ShutdownT::Write:
+        shutdown(fd_, SHUT_WR);
+        break;
+
+    case ShutdownT::Both:
+        shutdown(fd_, SHUT_RDWR);
+        break;
+    }
+}
+
 bool Connection::GetPeerAddress(struct sockaddr_in *inet)
 {
     socklen_t size = sizeof(*inet);

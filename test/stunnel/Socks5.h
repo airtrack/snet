@@ -24,6 +24,7 @@ public:
 
     using OnErrorClose = std::function<void ()>;
     using OnConnectAddress = std::function<void (std::string, unsigned short)>;
+    using OnEof = std::function<void ()>;
     using DataHandler = std::function<void (std::unique_ptr<snet::Buffer>)>;
 
     explicit Connection(std::unique_ptr<snet::Connection> connection);
@@ -33,10 +34,12 @@ public:
 
     void SetOnClose(const OnErrorClose &on_error_close);
     void SetOnConnectAddress(const OnConnectAddress &oca);
+    void SetOnEof(const OnEof &on_eof);
     void SetDataHandler(const DataHandler &data_handler);
 
     void ReplyConnectSuccess(unsigned int ip, unsigned short port);
     void Send(std::unique_ptr<snet::Buffer> data);
+    void ShutdownWrite();
     void Close();
 
 private:
@@ -59,6 +62,7 @@ private:
 
     OnErrorClose on_error_close_;
     OnConnectAddress on_connect_address_;
+    OnEof on_eof_;
     DataHandler data_handler_;
 
     std::unique_ptr<snet::Buffer> buffer_;
