@@ -68,7 +68,7 @@ private:
     bool CreateListenSocket(const std::string &ip, unsigned short port);
     void HandleAccept();
 
-    static const int kDefaultBacklog = 5;
+    static const int kDefaultBacklog = 128;
 
     int fd_;
     int backlog_;
