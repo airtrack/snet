@@ -76,6 +76,16 @@ void Connection::Close()
     }
 }
 
+void Connection::SetTcpKeepAlive()
+{
+    SetSocketKeepAlive(fd_);
+}
+
+void Connection::SetTcpNoDelay()
+{
+    SetSocketTcpNoDelay(fd_);
+}
+
 void Connection::Shutdown(ShutdownT type)
 {
     switch (type)

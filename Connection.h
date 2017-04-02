@@ -48,6 +48,8 @@ public:
     int Recv(Buffer *buffer);
     void Shutdown(ShutdownT type);
     void Close();
+    void SetTcpKeepAlive();
+    void SetTcpNoDelay();
     bool GetPeerAddress(struct sockaddr_in *inet);
 
     void SetOnError(const OnError &oe);

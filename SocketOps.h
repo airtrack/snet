@@ -5,6 +5,8 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/resource.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
@@ -15,8 +17,9 @@ namespace snet
 {
 
 bool SetSocketNonBlock(int fd);
-
 void SetSocketReuseAddr(int fd);
+void SetSocketKeepAlive(int fd);
+void SetSocketTcpNoDelay(int fd);
 
 void SetSockAddrIn(struct sockaddr_in *sin,
                    const char *ip, unsigned short port);

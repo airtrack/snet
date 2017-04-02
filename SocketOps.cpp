@@ -21,6 +21,18 @@ void SetSocketReuseAddr(int fd)
     setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
 }
 
+void SetSocketKeepAlive(int fd)
+{
+    int keepalive = 1;
+    setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &keepalive, sizeof(keepalive));
+}
+
+void SetSocketTcpNoDelay(int fd)
+{
+    int nodelay = 1;
+    setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof(nodelay));
+}
+
 void SetSockAddrIn(struct sockaddr_in *sin,
                    const char *ip, unsigned short port)
 {
