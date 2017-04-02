@@ -1,4 +1,5 @@
 #include "SocketOps.h"
+#include "SnetEndian.h"
 
 namespace snet
 {
@@ -38,7 +39,7 @@ void SetSockAddrIn(struct sockaddr_in *sin,
 {
     memset(sin, 0, sizeof(*sin));
     sin->sin_family = AF_INET;
-    sin->sin_port = htons(port);
+    sin->sin_port = HostToNet16(port);
     sin->sin_addr.s_addr = inet_addr(ip);
 }
 

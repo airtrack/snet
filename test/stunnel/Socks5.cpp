@@ -1,4 +1,5 @@
 #include "Socks5.h"
+#include "SnetEndian.h"
 
 namespace socks5
 {
@@ -83,10 +84,10 @@ void Connection::ReplyConnectResult(unsigned int ip, unsigned short port)
     *buf++ = RSV;
     *buf++ = ATYP_IPV4;
 
-    *reinterpret_cast<unsigned int *>(buf) = htonl(ip);
+    *reinterpret_cast<unsigned int *>(buf) = snet::HostToNet32(ip);
     buf += sizeof(ip);
 
-    *reinterpret_cast<unsigned short *>(buf) = htons(port);
+    *reinterpret_cast<unsigned short *>(buf) = snet::HostToNet16(port);
 
     connection_->Send(std::move(buffer));
 }
@@ -197,7 +198,7 @@ void Connection::GetConnectAddress()
         std::string domain_name(buf, buf + len);
 
         buf += len;
-        auto port = ntohs(*reinterpret_cast<unsigned short *>(buf));
+        auto port = snet::NetToHost16(*reinterpret_cast<unsigned short *>(buf));
 
         buffer_.reset();
         state_ = State::Connecting;

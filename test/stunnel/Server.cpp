@@ -132,8 +132,8 @@ private:
                     it->second->GetPeerAddress(&inet);
                     tunnel_->Send(
                         stunnel::PackOpenSuccess(
-                            id, ntohl(inet.sin_addr.s_addr),
-                            ntohs(inet.sin_port)));
+                            id, snet::NetToHost32(inet.sin_addr.s_addr),
+                            snet::NetToHost16(inet.sin_port)));
                 }
             }
             break;

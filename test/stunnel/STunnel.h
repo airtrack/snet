@@ -2,7 +2,7 @@
 #define STUNNEL_H
 
 #include "Buffer.h"
-#include <arpa/inet.h>
+#include "SnetEndian.h"
 #include <string.h>
 #include <string>
 #include <memory>
@@ -19,18 +19,6 @@ enum class Protocol : unsigned char
     Close,
     Data
 };
-
-inline unsigned long long Htonll(unsigned long long n)
-{
-    return static_cast<unsigned long long>(
-        htonl(static_cast<unsigned int>(n))) << 32 |
-        htonl(static_cast<unsigned int>(n >> 32));
-}
-
-inline unsigned long long Ntohll(unsigned long long n)
-{
-    return Htonll(n);
-}
 
 inline std::size_t GetProtocolHeadSize()
 {
@@ -72,7 +60,7 @@ inline std::unique_ptr<snet::Buffer> PrepareBufferAndPackHead(
     auto buf = buffer->buf;
     *buf++ = static_cast<unsigned char>(protocol);
 
-    *reinterpret_cast<unsigned long long *>(buf) = Htonll(id);
+    *reinterpret_cast<unsigned long long *>(buf) = snet::HostToNet64(id);
     return buffer;
 }
 
@@ -87,7 +75,7 @@ inline std::unique_ptr<snet::Buffer> PackOpen(unsigned long long id,
     memcpy(buf, host.data(), host.size());
     buf += host.size();
 
-    *reinterpret_cast<unsigned short *>(buf) = htons(port);
+    *reinterpret_cast<unsigned short *>(buf) = snet::HostToNet16(port);
     return buffer;
 }
 
@@ -99,10 +87,10 @@ inline std::unique_ptr<snet::Buffer> PackOpenSuccess(unsigned long long id,
     auto buffer = PrepareBufferAndPackHead(size, Protocol::OpenSuccess, id);
     auto buf = buffer->buf + GetProtocolHeadSize();
 
-    *reinterpret_cast<unsigned int *>(buf) = htonl(ip);
+    *reinterpret_cast<unsigned int *>(buf) = snet::HostToNet32(ip);
     buf += sizeof(ip);
 
-    *reinterpret_cast<unsigned short *>(buf) = htons(port);
+    *reinterpret_cast<unsigned short *>(buf) = snet::HostToNet16(port);
     return buffer;
 }
 
@@ -151,8 +139,8 @@ inline Protocol UnpackProtocolType(snet::Buffer &buffer)
 
 inline unsigned long long UnpackId(snet::Buffer &buffer)
 {
-    auto id = Ntohll(*reinterpret_cast<unsigned long long *>(
-            buffer.buf + buffer.pos));
+    auto id = snet::NetToHost64(
+        *reinterpret_cast<unsigned long long *>(buffer.buf + buffer.pos));
     buffer.pos += sizeof(id);
     return id;
 }
@@ -169,7 +157,8 @@ inline bool UnpackOpen(snet::Buffer &buffer, unsigned long long *id,
     host->assign(buffer.buf + buffer.pos, buffer.buf + buffer.pos + len);
     buffer.pos += len;
 
-    *port = ntohs(*reinterpret_cast<unsigned short *>(buffer.buf + buffer.pos));
+    *port = snet::NetToHost16(
+        *reinterpret_cast<unsigned short *>(buffer.buf + buffer.pos));
     buffer.pos += sizeof(*port);
 
     return true;

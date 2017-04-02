@@ -1,5 +1,5 @@
 #include "Tunnel.h"
-#include <arpa/inet.h>
+#include "SnetEndian.h"
 #include <string.h>
 
 namespace tunnel
@@ -74,7 +74,7 @@ bool Connection::SendEncryptBuffer(std::unique_ptr<snet::Buffer> buffer)
                          kLengthBytes, snet::OpDeleter));
 
     auto size = buffer->size;
-    *reinterpret_cast<unsigned short *>(length->buf) = htons(size);
+    *reinterpret_cast<unsigned short *>(length->buf) = snet::HostToNet16(size);
 
     if (SendBuffer(std::move(length)))
         return SendBuffer(std::move(buffer));
@@ -122,7 +122,7 @@ void Connection::HandleReceivable()
     {
         if (!recv_buffer_)
         {
-            auto length = ntohs(
+            auto length = snet::NetToHost16(
                 *reinterpret_cast<unsigned short *>(recv_length_buffer_.buf));
             if (length == 0)
             {
