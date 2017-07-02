@@ -1,6 +1,22 @@
 #include "EventLoop.h"
 #include "KQueue.h"
 #include "Epoll.h"
+#include <signal.h>
+
+namespace
+{
+
+struct IgnoreSigPipe
+{
+    IgnoreSigPipe()
+    {
+        signal(SIGPIPE, SIG_IGN);
+    }
+};
+
+IgnoreSigPipe ignore_sig_pipe;
+
+} // namespace
 
 namespace snet
 {
